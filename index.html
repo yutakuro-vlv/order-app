@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>発注入力アプリ</title>
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+  <style>
+    :root {
+      --primary: #1a73e8;
+      --primary-dark: #1557b0;
+      --danger: #dc3545;
+      --success: #28a745;
+      --bg: #f5f5f5;
+      --card: #ffffff;
+      --text: #333333;
+      --text-light: #666666;
+      --border: #dddddd;
+      --highlight: #fff3cd;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 80px;
+    }
+
+    /* Header */
+    .header {
+      background: var(--primary);
+      color: white;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header h1 { font-size: 18px; font-weight: 600; }
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+    .header-btn {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .header-btn:hover { background: rgba(255,255,255,0.3); }
+    .user-info { font-size: 12px; color: rgba(255,255,255,0.8); }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      background: white;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-light);
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+    }
+    .tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    /* Main content */
+    .container { max-width: 800px; margin: 0 auto; padding: 16px; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* Barcode scan area */
+    .scan-area {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .scan-area label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text-light);
+    }
+    .scan-input {
+      width: 100%;
+      padding: 14px 16px;
+      font-size: 18px;
+      border: 2px solid var(--primary);
+      border-radius: 8px;
+      outline: none;
+      text-align: center;
+      letter-spacing: 2px;
+    }
+    .scan-input:focus {
+      border-color: var(--primary-dark);
+      box-shadow: 0 0 0 3px rgba(26,115,232,0.2);
+    }
+    .scan-status {
+      text-align: center;
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--text-light);
+    }
+    .scan-status.ready { color: var(--success); }
+    .scan-status.error { color: var(--danger); }
+
+    /* Product card */
+    .product-card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      border-left: 4px solid var(--primary);
+      display: none;
+    }
+    .product-card.show { display: block; }
+    .product-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .product-category { font-size: 12px; color: var(--text-light); margin-bottom: 12px; }
+    .product-barcode { font-size: 11px; color: #999; margin-bottom: 16px; font-family: monospace; }
+    .qty-row { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+    .qty-group { flex: 1; }
+    .qty-group label {
+      display: block; font-size: 13px; font-weight: 600;
+      margin-bottom: 4px; color: var(--text-light);
+    }
+    .qty-input {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 20px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      text-align: center;
+      outline: none;
+    }
+    .qty-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(26,115,232,0.15);
+    }
+    .qty-total { text-align: center; font-size: 14px; color: var(--text-light); margin-bottom: 12px; }
+    .qty-total strong { color: var(--text); font-size: 18px; }
+    .add-btn {
+      width: 100%; padding: 12px;
+      background: var(--primary); color: white;
+      border: none; border-radius: 8px;
+      font-size: 16px; font-weight: 600; cursor: pointer;
+    }
+    .add-btn:hover { background: var(--primary-dark); }
+    .add-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+    /* Order list */
+    .order-list {
+      background: var(--card);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      margin-bottom: 16px;
+    }
+    .order-header {
+      padding: 14px 16px;
+      background: #f8f9fa;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .order-header h3 { font-size: 15px; }
+    .order-count {
+      background: var(--primary); color: white;
+      padding: 2px 10px; border-radius: 12px; font-size: 13px;
+    }
+    .order-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .order-item:last-child { border-bottom: none; }
+    .order-item-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .order-item-name {
+      font-size: 13px; font-weight: 500;
+      flex: 1; margin-right: 8px; word-break: break-all;
+    }
+    .order-item-qty {
+      font-size: 13px; color: var(--primary);
+      font-weight: 600; white-space: nowrap; margin-right: 8px;
+    }
+    .order-item-actions { display: flex; gap: 4px; }
+    .order-item-btn {
+      background: none; border: none;
+      font-size: 16px; cursor: pointer; padding: 4px 6px;
+    }
+    .order-item-btn.edit { color: var(--primary); }
+    .order-item-btn.remove { color: var(--danger); }
+    /* Editable text row */
+    .order-item-edit {
+      margin-top: 8px;
+      display: none;
+    }
+    .order-item-edit.show { display: block; }
+    .order-item-edit-input {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 13px;
+      border: 1px solid var(--primary);
+      border-radius: 6px;
+      outline: none;
+      background: #f0f7ff;
+    }
+    .order-item-edit-hint {
+      font-size: 11px; color: #999; margin-top: 4px;
+    }
+    .order-empty {
+      padding: 40px 16px;
+      text-align: center;
+      color: #999; font-size: 14px;
+    }
+
+    /* Export bar */
+    .export-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: white;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      display: flex; gap: 8px; z-index: 100;
+      justify-content: center;
+    }
+    .export-btn {
+      flex: 1; max-width: 400px; padding: 14px;
+      background: var(--success); color: white;
+      border: none; border-radius: 8px;
+      font-size: 16px; font-weight: 700; cursor: pointer;
+    }
+    .export-btn:hover { background: #218838; }
+    .export-btn:disabled { background: #ccc; cursor: not-allowed; }
+    .clear-btn {
+      padding: 14px 20px;
+      background: var(--danger); color: white;
+      border: none; border-radius: 8px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+    }
+    .clear-btn:hover { background: #c82333; }
+
+    /* Search section */
+    .search-area {
+      background: var(--card);
+      border-radius: 12px; padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .filter-row { display: flex; gap: 8px; margin-bottom: 12px; }
+    .filter-row select, .filter-row input {
+      flex: 1; padding: 10px 12px; font-size: 14px;
+      border: 1px solid var(--border); border-radius: 8px; outline: none;
+    }
+    .filter-row select:focus, .filter-row input:focus { border-color: var(--primary); }
+    .search-results { max-height: 50vh; overflow-y: auto; }
+    .search-result-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .search-result-item:hover { background: #f0f7ff; }
+    .search-result-item:active { background: #e0efff; }
+    .search-result-name { font-size: 14px; font-weight: 500; }
+    .search-result-meta { font-size: 11px; color: #999; margin-top: 2px; }
+
+    /* Settings section */
+    .settings-card {
+      background: var(--card); border-radius: 12px;
+      padding: 20px; margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .settings-card h3 {
+      font-size: 15px; margin-bottom: 12px;
+      padding-bottom: 8px; border-bottom: 1px solid var(--border);
+    }
+    .settings-row {
+      display: flex; justify-content: space-between;
+      align-items: center; padding: 8px 0;
+    }
+    .settings-row label { font-size: 14px; }
+    .file-upload-btn {
+      display: inline-block; padding: 8px 16px;
+      background: var(--primary); color: white;
+      border-radius: 6px; cursor: pointer; font-size: 13px;
+    }
+    .file-upload-btn:hover { background: var(--primary-dark); }
+    .file-upload-btn input { display: none; }
+    .settings-info { font-size: 12px; color: var(--text-light); margin-top: 4px; }
+    .todo-list-select {
+      width: 100%; padding: 10px 12px; font-size: 14px;
+      border: 1px solid var(--border); border-radius: 8px;
+      outline: none; margin-top: 8px;
+    }
+    .todo-list-select:focus { border-color: var(--primary); }
+
+    /* History section */
+    .history-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-date {
+      font-size: 12px; font-weight: 700;
+      color: var(--primary); margin-bottom: 4px;
+    }
+    .history-list-name {
+      font-size: 11px; color: #999; margin-bottom: 6px;
+    }
+    .history-task {
+      font-size: 12px; color: var(--text);
+      padding: 2px 0;
+    }
+    .history-empty {
+      padding: 30px 16px; text-align: center;
+      color: #999; font-size: 14px;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed; top: 70px; left: 50%;
+      transform: translateX(-50%);
+      background: #333; color: white;
+      padding: 10px 20px; border-radius: 8px;
+      font-size: 14px; z-index: 1000;
+      opacity: 0; transition: opacity 0.3s;
+      pointer-events: none;
+      max-width: 90%;
+    }
+    .toast.show { opacity: 1; }
+    .toast.success { background: var(--success); }
+    .toast.error { background: var(--danger); }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200; display: none;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: white; border-radius: 16px;
+      padding: 24px; max-width: 500px;
+      width: 90%; max-height: 80vh; overflow-y: auto;
+    }
+    .modal h3 { margin-bottom: 16px; font-size: 18px; }
+    .modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+    .modal-btn {
+      padding: 8px 20px; border-radius: 6px;
+      border: none; font-size: 14px; cursor: pointer;
+    }
+    .modal-btn.primary { background: var(--primary); color: white; }
+    .modal-btn.cancel { background: #eee; color: var(--text); }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%; border-top-color: white;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .header h1 { font-size: 15px; }
+      .container { padding: 10px; }
+      .qty-row { gap: 8px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>発注入力アプリ</h1>
+      <div class="user-info" id="userInfo"></div>
+    </div>
+    <div class="header-actions">
+      <button class="header-btn" id="loginBtn" onclick="handleLogin()">MSログイン</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" data-tab="scan" onclick="switchTab('scan')">📷 スキャン</div>
+    <div class="tab" data-tab="search" onclick="switchTab('search')">🔍 検索</div>
+    <div class="tab" data-tab="history" onclick="switchTab('history')">📜 履歴</div>
+    <div class="tab" data-tab="settings" onclick="switchTab('settings')">⚙️ 設定</div>
+  </div>
+
+  <div class="container">
+    <!-- ==================== SCAN ==================== -->
+    <div class="section active" id="section-scan">
+      <div class="scan-area">
+        <label for="barcodeInput">バーコードをスキャン</label>
+        <input type="text" id="barcodeInput" class="scan-input"
+               placeholder="ここにフォーカスしてスキャン"
+               autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <div class="scan-status" id="scanStatus">スキャン待機中...</div>
+      </div>
+
+      <div class="product-card" id="productCard">
+        <div class="product-name" id="productName"></div>
+        <div class="product-category" id="productCategory"></div>
+        <div class="product-barcode" id="productBarcode"></div>
+        <div class="qty-row">
+          <div class="qty-group">
+            <label>A欄</label>
+            <input type="number" class="qty-input" id="qtyA" min="0" value="" placeholder="0"
+                   inputmode="numeric" pattern="[0-9]*">
+          </div>
+          <div class="qty-group">
+            <label>B欄</label>
+            <input type="number" class="qty-input" id="qtyB" min="0" value="" placeholder="0"
+                   inputmode="numeric" pattern="[0-9]*">
+          </div>
+        </div>
+        <div class="qty-total">合計: <strong id="qtyTotal">0</strong></div>
+        <button class="add-btn" onclick="addToOrder()">リストに追加</button>
+      </div>
+
+      <div class="order-list" id="orderListContainer">
+        <div class="order-header">
+          <h3>📋 発注リスト</h3>
+          <span class="order-count" id="orderCount">0</span>
+        </div>
+        <div id="orderListBody">
+          <div class="order-empty">商品をスキャンして追加してください</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SEARCH ==================== -->
+    <div class="section" id="section-search">
+      <div class="search-area">
+        <div class="filter-row">
+          <select id="categoryFilter" onchange="doSearch()">
+            <option value="">カテゴリーで絞る</option>
+          </select>
+        </div>
+        <div class="filter-row">
+          <input type="text" id="searchInput" placeholder="商品名で検索（部分一致）"
+                 oninput="doSearch()" autocomplete="off">
+        </div>
+        <div class="search-results" id="searchResults"></div>
+      </div>
+
+      <div class="product-card" id="searchProductCard">
+        <div class="product-name" id="searchProductName"></div>
+        <div class="product-category" id="searchProductCategory"></div>
+        <div class="product-barcode" id="searchProductBarcode"></div>
+        <div class="qty-row">
+          <div class="qty-group">
+            <label>A欄</label>
+            <input type="number" class="qty-input" id="searchQtyA" min="0" value="" placeholder="0"
+                   inputmode="numeric" pattern="[0-9]*">
+          </div>
+          <div class="qty-group">
+            <label>B欄</label>
+            <input type="number" class="qty-input" id="searchQtyB" min="0" value="" placeholder="0"
+                   inputmode="numeric" pattern="[0-9]*">
+          </div>
+        </div>
+        <div class="qty-total">合計: <strong id="searchQtyTotal">0</strong></div>
+        <button class="add-btn" onclick="addToOrderFromSearch()">リストに追加</button>
+      </div>
+
+      <div class="order-list">
+        <div class="order-header">
+          <h3>📋 発注リスト</h3>
+          <span class="order-count" id="orderCount2">0</span>
+        </div>
+        <div id="orderListBody2"></div>
+      </div>
+    </div>
+
+    <!-- ==================== HISTORY ==================== -->
+    <div class="section" id="section-history">
+      <div class="order-list">
+        <div class="order-header">
+          <h3>📜 出力履歴（6ヶ月間保持）</h3>
+          <button class="header-btn" style="background:var(--danger);border:none;font-size:12px;padding:4px 10px;" onclick="clearHistory()">全削除</button>
+        </div>
+        <div id="historyListBody">
+          <div class="history-empty">履歴はまだありません</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SETTINGS ==================== -->
+    <div class="section" id="section-settings">
+      <div class="settings-card">
+        <h3>📁 CSVデータベース</h3>
+        <div class="settings-row">
+          <label>商品CSVファイル (Shift-JIS/UTF-8)</label>
+          <label class="file-upload-btn">
+            アップロード
+            <input type="file" accept=".csv" onchange="handleCSVUpload(event)">
+          </label>
+        </div>
+        <div class="settings-info" id="csvInfo">未読み込み</div>
+        <div style="margin-top:12px;">
+          <button class="add-btn" id="syncGithubBtn" onclick="syncToGithub()" style="background:var(--success);font-size:13px;padding:10px;" disabled>
+            ☁️ GitHubに同期（他のデバイスでも使えるようにする）
+          </button>
+          <div class="settings-info" id="syncStatus"></div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <h3>📱 このデバイスの名前</h3>
+        <p style="font-size:12px;color:var(--text-light);margin-bottom:8px;">
+          履歴にどのデバイスから出力したか表示されます。
+        </p>
+        <input type="text" id="deviceNameInput" class="todo-list-select"
+               placeholder="例: 店舗iPad、事務所Mac" style="margin-top:0;font-size:14px;"
+               onchange="saveDeviceName()">
+        <div class="settings-info" id="deviceNameStatus"></div>
+      </div>
+
+      <div class="settings-card">
+        <h3>🔑 GitHub連携（デバイス間CSV共有）</h3>
+        <p style="font-size:12px;color:var(--text-light);margin-bottom:8px;">
+          CSVデータを他のデバイスと自動共有するためのGitHubトークンを設定してください。各デバイスで1回だけ入力が必要です。
+        </p>
+        <input type="password" id="githubTokenInput" class="todo-list-select"
+               placeholder="github_pat_xxxx..." style="margin-top:0;font-size:13px;"
+               onchange="saveGithubToken()">
+        <div class="settings-info" id="githubTokenStatus"></div>
+      </div>
+
+      <div class="settings-card">
+        <h3>🔗 Microsoft To Do 連携</h3>
+        <div id="todoSettings">
+          <p style="font-size:14px; color: var(--text-light); margin-bottom: 12px;">
+            Microsoftアカウントにログインして、出力先のリストを選択してください。
+          </p>
+          <button class="add-btn" onclick="handleLogin()" id="settingsLoginBtn">
+            Microsoftアカウントでログイン
+          </button>
+          <div id="todoListSelector" style="display:none; margin-top: 16px;">
+            <label style="font-size: 14px; font-weight: 600;">出力先リスト:</label>
+            <select class="todo-list-select" id="todoListSelect" onchange="saveTodoListSelection()">
+              <option value="">リストを選択...</option>
+            </select>
+            <div class="settings-info" id="todoListInfo"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <h3>ℹ️ アプリ情報</h3>
+        <div class="settings-info">
+          <p>バージョン: 1.1.0</p>
+          <p>バーコードリーダー: Socket Mobile S700 (HIDモード)</p>
+          <p style="margin-top: 8px;">使い方:</p>
+          <ol style="margin-left: 20px; margin-top: 4px; font-size: 12px; line-height: 1.8;">
+            <li>設定タブでCSVをアップロード</li>
+            <li>Microsoftアカウントでログイン</li>
+            <li>出力先のTo Doリストを選択</li>
+            <li>スキャンタブでバーコードを読み取り</li>
+            <li>数量を入力してリストに追加</li>
+            <li>リスト上の✏️アイコンで出力テキストを編集可能</li>
+            <li>「To Doに出力」ボタンで一括送信</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export bar -->
+  <div class="export-bar" id="exportBar">
+    <button class="clear-btn" onclick="clearOrder()">クリア</button>
+    <button class="export-btn" id="exportBtn" onclick="exportToTodo()" disabled>
+      To Doに出力 (0件)
+    </button>
+  </div>
+
+  <script>
+    // ============================================================
+    // Configuration
+    // ============================================================
+    const MSAL_CONFIG = {
+      auth: {
+        clientId: '5f35e78e-9c6b-4ceb-bb78-20555b07ad77',
+        authority: 'https://login.microsoftonline.com/consumers',
+        redirectUri: 'https://yutakuro-vlv.github.io/order-app/',
+      },
+      cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
+    };
+    const GRAPH_SCOPES = ['Tasks.ReadWrite'];
+    const HISTORY_RETENTION_MS = 6 * 30 * 24 * 60 * 60 * 1000; // ~6 months
+    const GITHUB_REPO = 'yutakuro-vlv/order-app';
+    const GITHUB_FILE = 'products.json';
+
+    // ============================================================
+    // State
+    // ============================================================
+    let products = [];
+    let barcodeMap = {};
+    let orderList = [];       // [{product, qtyA, qtyB, customTitle}, ...]
+    let categories = [];
+    let msalInstance = null;
+    let accessToken = null;
+    let selectedTodoListId = localStorage.getItem('todoListId') || '';
+    let selectedTodoListName = localStorage.getItem('todoListName') || '';
+    let githubToken = localStorage.getItem('githubToken') || '';
+    let deviceName = localStorage.getItem('deviceName') || '';
+    let currentScanProduct = null;
+    let currentSearchProduct = null;
+
+    // ============================================================
+    // Initialize
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', async () => {
+      msalInstance = new msal.PublicClientApplication(MSAL_CONFIG);
+      await msalInstance.initialize();
+
+      try {
+        const response = await msalInstance.handleRedirectPromise();
+        if (response) {
+          accessToken = response.accessToken;
+          updateLoginUI(response.account);
+          loadTodoLists();
+        }
+      } catch (err) { console.error('Redirect error:', err); }
+
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length > 0) {
+        updateLoginUI(accounts[0]);
+        try {
+          const resp = await msalInstance.acquireTokenSilent({
+            scopes: GRAPH_SCOPES, account: accounts[0]
+          });
+          accessToken = resp.accessToken;
+          loadTodoLists();
+        } catch (e) { console.log('Silent token failed'); }
+      }
+
+      // Load CSV: try remote products.json first, then localStorage
+      await loadProductData();
+
+      // Load saved order list
+      const savedOrder = localStorage.getItem('orderList');
+      if (savedOrder) {
+        try { orderList = JSON.parse(savedOrder); renderOrderList(); } catch(e) {}
+      }
+
+      setupBarcodeInput();
+      setupQtyListeners('qtyA', 'qtyB', 'qtyTotal');
+      setupQtyListeners('searchQtyA', 'searchQtyB', 'searchQtyTotal');
+      await loadRemoteHistory();
+      renderHistory();
+      initGithubTokenUI();
+      initDeviceNameUI();
+      updateSyncBtnState();
+    });
+
+    // ============================================================
+    // Product Data Loading (cross-device)
+    // ============================================================
+    async function loadProductData() {
+      // 1. Try fetching products.json from the same directory (GitHub Pages)
+      try {
+        const res = await fetch('products.json?t=' + Date.now());
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.length > 0) {
+            loadFromProductArray(data);
+            document.getElementById('csvInfo').textContent =
+              `✅ products.json から読み込み (${products.length}件)`;
+            updateSyncBtnState();
+            return;
+          }
+        }
+      } catch (e) { /* products.json not found, try localStorage */ }
+
+      // 2. Fallback to localStorage
+      const savedCSV = localStorage.getItem('csvData');
+      if (savedCSV) {
+        parseCSVData(savedCSV);
+        const savedInfo = localStorage.getItem('csvFileName') || 'ローカル保存';
+        document.getElementById('csvInfo').textContent =
+          `✅ ${savedInfo} (${products.length}件) [ローカルのみ]`;
+        updateSyncBtnState();
+      }
+    }
+
+    function loadFromProductArray(arr) {
+      products = arr;
+      barcodeMap = {};
+      const catSet = new Set();
+      products.forEach(p => {
+        if (p.barcode) barcodeMap[p.barcode] = p;
+        if (p.category) catSet.add(p.category);
+      });
+      categories = Array.from(catSet).sort();
+      populateCategoryFilter();
+    }
+
+    function populateCategoryFilter() {
+      const catSelect = document.getElementById('categoryFilter');
+      catSelect.innerHTML = '<option value="">すべてのカテゴリー</option>';
+      categories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        catSelect.appendChild(opt);
+      });
+    }
+
+    // ============================================================
+    // CSV Upload & Parse
+    // ============================================================
+    function handleCSVUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const buffer = new Uint8Array(e.target.result);
+        let text;
+        try {
+          const decoder = new TextDecoder('shift-jis');
+          text = decoder.decode(buffer);
+          if (!text.includes('名称')) {
+            text = new TextDecoder('utf-8').decode(buffer);
+          }
+        } catch (err) {
+          text = new TextDecoder('utf-8').decode(buffer);
+        }
+        localStorage.setItem('csvData', text);
+        localStorage.setItem('csvFileName', file.name);
+        parseCSVData(text);
+        document.getElementById('csvInfo').textContent =
+          `✅ ${file.name} (${products.length}件)`;
+        updateSyncBtnState();
+        showToast(`${products.length}件の商品を読み込みました`, 'success');
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function parseCSVData(csvText) {
+      const result = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+      products = [];
+      barcodeMap = {};
+      const catSet = new Set();
+
+      result.data.forEach(row => {
+        const name = (row['名称'] || '').trim();
+        const type1 = (row['種別１'] || '').trim();
+        const type2 = (row['種別２'] || '').trim();
+        const category = (row['カテゴリー'] || '').trim();
+        const barcode = (row['バーコード'] || '').trim();
+        if (!name || !barcode) return;
+
+        let displayName = name;
+        if (type1) displayName += ' ' + type1;
+        if (type2) displayName += ' ' + type2;
+
+        const product = {
+          name, type1, type2, displayName, category, barcode,
+          price: (row['設定価格'] || '').trim(),
+          cost: (row['原価'] || '').trim(),
+        };
+        products.push(product);
+        barcodeMap[barcode] = product;
+        if (category) catSet.add(category);
+      });
+
+      categories = Array.from(catSet).sort();
+      populateCategoryFilter();
+    }
+
+    // ============================================================
+    // GitHub Sync
+    // ============================================================
+    function saveGithubToken() {
+      const input = document.getElementById('githubTokenInput');
+      githubToken = input.value.trim();
+      localStorage.setItem('githubToken', githubToken);
+      const status = document.getElementById('githubTokenStatus');
+      if (githubToken) {
+        status.textContent = '✅ トークン保存済み';
+        document.getElementById('syncGithubBtn').disabled = products.length === 0;
+      } else {
+        status.textContent = '';
+      }
+    }
+
+    function initGithubTokenUI() {
+      const input = document.getElementById('githubTokenInput');
+      if (githubToken) {
+        input.value = githubToken;
+        document.getElementById('githubTokenStatus').textContent = '✅ トークン保存済み';
+      }
+    }
+
+    function updateSyncBtnState() {
+      const btn = document.getElementById('syncGithubBtn');
+      btn.disabled = products.length === 0 || !githubToken;
+      const lastSync = localStorage.getItem('lastSync');
+      if (lastSync) {
+        document.getElementById('syncStatus').textContent =
+          `最終同期: ${new Date(lastSync).toLocaleString('ja-JP')}`;
+      }
+    }
+
+    async function syncToGithub() {
+      if (products.length === 0) {
+        showToast('商品データがありません', 'error');
+        return;
+      }
+      if (!githubToken) {
+        showToast('設定画面でGitHubトークンを入力してください', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('syncGithubBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>同期中...';
+      const statusEl = document.getElementById('syncStatus');
+
+      try {
+        const json = JSON.stringify(products);
+        const content = btoa(unescape(encodeURIComponent(json))); // Base64 encode
+
+        // Get current file SHA (needed for update)
+        let sha = null;
+        try {
+          const getRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`, {
+            headers: { 'Authorization': `Bearer ${githubToken}` }
+          });
+          if (getRes.ok) {
+            const fileData = await getRes.json();
+            sha = fileData.sha;
+          }
+        } catch (e) { /* file doesn't exist yet, that's OK */ }
+
+        // Create or update file
+        const body = {
+          message: `Update products.json (${products.length} items)`,
+          content: content,
+        };
+        if (sha) body.sha = sha;
+
+        const putRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${githubToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        });
+
+        if (putRes.ok) {
+          showToast(`✅ ${products.length}件のデータをGitHubに同期しました`, 'success');
+          statusEl.textContent = `✅ 最終同期: ${new Date().toLocaleString('ja-JP')}`;
+          localStorage.setItem('lastSync', new Date().toISOString());
+        } else {
+          const err = await putRes.json();
+          console.error('GitHub sync failed:', err);
+          showToast('GitHub同期に失敗しました: ' + (err.message || putRes.status), 'error');
+          statusEl.textContent = '❌ 同期失敗';
+        }
+      } catch (err) {
+        console.error('GitHub sync error:', err);
+        showToast('GitHub同期エラー', 'error');
+        statusEl.textContent = '❌ 同期エラー';
+      }
+
+      btn.disabled = false;
+      btn.textContent = '☁️ GitHubに同期（他のデバイスでも使えるようにする）';
+    }
+
+    // ============================================================
+    // Tab switching
+    // ============================================================
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+      document.getElementById(`section-${tabName}`).classList.add('active');
+      if (tabName === 'scan') {
+        setTimeout(() => document.getElementById('barcodeInput').focus(), 100);
+      }
+      if (tabName === 'history') {
+        renderHistory();
+      }
+    }
+
+    // ============================================================
+    // Microsoft Login
+    // ============================================================
+    function isMobile() {
+      return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    }
+
+    async function handleLogin() {
+      if (!msalInstance) return;
+      // iOS/Android: use redirect (popups are blocked)
+      if (isMobile()) {
+        await msalInstance.loginRedirect({ scopes: GRAPH_SCOPES });
+        return;
+      }
+      // Desktop: use popup
+      try {
+        const resp = await msalInstance.loginPopup({ scopes: GRAPH_SCOPES });
+        accessToken = resp.accessToken;
+        updateLoginUI(resp.account);
+        loadTodoLists();
+        showToast('ログインしました', 'success');
+      } catch (err) {
+        if (err.errorCode === 'popup_window_error' || err.errorCode === 'empty_window_error') {
+          await msalInstance.loginRedirect({ scopes: GRAPH_SCOPES });
+        } else {
+          console.error('Login error:', err);
+          showToast('ログインに失敗しました', 'error');
+        }
+      }
+    }
+
+    function updateLoginUI(account) {
+      document.getElementById('userInfo').textContent = account.username;
+      document.getElementById('loginBtn').textContent = 'ログイン中';
+      document.getElementById('settingsLoginBtn').textContent = '✅ ログイン済み: ' + account.username;
+      document.getElementById('settingsLoginBtn').disabled = true;
+      document.getElementById('settingsLoginBtn').style.background = '#6c757d';
+      document.getElementById('todoListSelector').style.display = 'block';
+    }
+
+    async function getAccessToken() {
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length === 0) {
+        showToast('ログインしてください', 'error');
+        return null;
+      }
+      try {
+        const resp = await msalInstance.acquireTokenSilent({
+          scopes: GRAPH_SCOPES, account: accounts[0]
+        });
+        return resp.accessToken;
+      } catch (e) {
+        if (isMobile()) {
+          await msalInstance.acquireTokenRedirect({ scopes: GRAPH_SCOPES });
+          return null;
+        }
+        try {
+          const resp = await msalInstance.acquireTokenPopup({ scopes: GRAPH_SCOPES });
+          return resp.accessToken;
+        } catch (err) {
+          showToast('トークン取得に失敗。再ログインしてください。', 'error');
+          return null;
+        }
+      }
+    }
+
+    // ============================================================
+    // To Do Lists
+    // ============================================================
+    async function loadTodoLists() {
+      const token = await getAccessToken();
+      if (!token) return;
+      try {
+        const res = await fetch('https://graph.microsoft.com/v1.0/me/todo/lists', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        const select = document.getElementById('todoListSelect');
+        select.innerHTML = '<option value="">リストを選択...</option>';
+        (data.value || []).forEach(list => {
+          const opt = document.createElement('option');
+          opt.value = list.id;
+          opt.textContent = list.displayName;
+          if (list.id === selectedTodoListId) opt.selected = true;
+          select.appendChild(opt);
+        });
+        if (selectedTodoListId) {
+          document.getElementById('todoListInfo').textContent =
+            `✅ 選択中: ${selectedTodoListName}`;
+        }
+      } catch (err) {
+        console.error('Failed to load todo lists:', err);
+        showToast('リスト取得に失敗しました', 'error');
+      }
+    }
+
+    function saveTodoListSelection() {
+      const select = document.getElementById('todoListSelect');
+      selectedTodoListId = select.value;
+      selectedTodoListName = select.options[select.selectedIndex]?.textContent || '';
+      localStorage.setItem('todoListId', selectedTodoListId);
+      localStorage.setItem('todoListName', selectedTodoListName);
+      document.getElementById('todoListInfo').textContent =
+        selectedTodoListId ? `✅ 選択中: ${selectedTodoListName}` : '';
+    }
+
+    // ============================================================
+    // Barcode Input
+    // ============================================================
+    function setupBarcodeInput() {
+      const input = document.getElementById('barcodeInput');
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const code = input.value.trim();
+          if (code) {
+            handleBarcodeScan(code);
+            input.value = '';
+          }
+        }
+      });
+      input.addEventListener('blur', () => {
+        if (document.getElementById('section-scan').classList.contains('active') &&
+            !document.getElementById('productCard').classList.contains('show')) {
+          setTimeout(() => {
+            if (document.activeElement.tagName !== 'INPUT') input.focus();
+          }, 200);
+        }
+      });
+    }
+
+    function handleBarcodeScan(barcode) {
+      const status = document.getElementById('scanStatus');
+      if (products.length === 0) {
+        status.textContent = '⚠️ CSVが未読み込みです。設定タブからアップロードしてください。';
+        status.className = 'scan-status error';
+        return;
+      }
+      const product = barcodeMap[barcode];
+      if (product) {
+        showProductCard(product);
+        status.textContent = `✅ ${product.displayName}`;
+        status.className = 'scan-status ready';
+      } else {
+        status.textContent = `❌ バーコード「${barcode}」が見つかりません`;
+        status.className = 'scan-status error';
+        document.getElementById('productCard').classList.remove('show');
+      }
+    }
+
+    function showProductCard(product) {
+      currentScanProduct = product;
+      document.getElementById('productName').textContent = product.displayName;
+      document.getElementById('productCategory').textContent = `カテゴリー: ${product.category}`;
+      document.getElementById('productBarcode').textContent = `バーコード: ${product.barcode}`;
+      document.getElementById('qtyA').value = '';
+      document.getElementById('qtyB').value = '';
+      document.getElementById('qtyTotal').textContent = '0';
+      document.getElementById('productCard').classList.add('show');
+      setTimeout(() => document.getElementById('qtyA').focus(), 100);
+    }
+
+    // ============================================================
+    // Quantity calculation
+    // ============================================================
+    function setupQtyListeners(idA, idB, idTotal) {
+      const a = document.getElementById(idA);
+      const b = document.getElementById(idB);
+      const total = document.getElementById(idTotal);
+      const update = () => {
+        total.textContent = (parseInt(a.value) || 0) + (parseInt(b.value) || 0);
+      };
+      a.addEventListener('input', update);
+      b.addEventListener('input', update);
+    }
+
+    // ============================================================
+    // Build the title string for To Do
+    // ============================================================
+    function buildTitle(product, qtyA, qtyB) {
+      const total = qtyA + qtyB;
+      return `${product.displayName} -> A${qtyA}+B${qtyB}=${total}`;
+    }
+
+    // ============================================================
+    // Order List Management
+    // ============================================================
+    function addToOrder() {
+      if (!currentScanProduct) return;
+      const qtyA = parseInt(document.getElementById('qtyA').value) || 0;
+      const qtyB = parseInt(document.getElementById('qtyB').value) || 0;
+      if (qtyA === 0 && qtyB === 0) { showToast('数量を入力してください', 'error'); return; }
+
+      const title = buildTitle(currentScanProduct, qtyA, qtyB);
+      orderList.push({ product: currentScanProduct, qtyA, qtyB, customTitle: title });
+      saveOrderList();
+      renderOrderList();
+      showToast(`${currentScanProduct.displayName} を追加しました`, 'success');
+
+      document.getElementById('productCard').classList.remove('show');
+      currentScanProduct = null;
+      document.getElementById('scanStatus').textContent = 'スキャン待機中...';
+      document.getElementById('scanStatus').className = 'scan-status';
+      setTimeout(() => document.getElementById('barcodeInput').focus(), 100);
+    }
+
+    function addToOrderFromSearch() {
+      if (!currentSearchProduct) return;
+      const qtyA = parseInt(document.getElementById('searchQtyA').value) || 0;
+      const qtyB = parseInt(document.getElementById('searchQtyB').value) || 0;
+      if (qtyA === 0 && qtyB === 0) { showToast('数量を入力してください', 'error'); return; }
+
+      const title = buildTitle(currentSearchProduct, qtyA, qtyB);
+      orderList.push({ product: currentSearchProduct, qtyA, qtyB, customTitle: title });
+      saveOrderList();
+      renderOrderList();
+      showToast(`${currentSearchProduct.displayName} を追加しました`, 'success');
+
+      document.getElementById('searchProductCard').classList.remove('show');
+      currentSearchProduct = null;
+    }
+
+    function removeFromOrder(index) {
+      orderList.splice(index, 1);
+      saveOrderList();
+      renderOrderList();
+    }
+
+    function clearOrder() {
+      if (orderList.length === 0) return;
+      if (!confirm('発注リストをクリアしますか？')) return;
+      orderList = [];
+      saveOrderList();
+      renderOrderList();
+      showToast('リストをクリアしました');
+    }
+
+    function saveOrderList() {
+      localStorage.setItem('orderList', JSON.stringify(orderList));
+    }
+
+    // Toggle edit mode for an order item
+    function toggleEdit(index) {
+      const editRow = document.getElementById(`edit-${index}`);
+      if (editRow) {
+        editRow.classList.toggle('show');
+        if (editRow.classList.contains('show')) {
+          const input = editRow.querySelector('input');
+          input.focus();
+          input.select();
+        }
+      }
+    }
+
+    // Update customTitle when user edits
+    function updateTitle(index, value) {
+      orderList[index].customTitle = value;
+      saveOrderList();
+    }
+
+    function renderOrderList() {
+      const bodies = [
+        document.getElementById('orderListBody'),
+        document.getElementById('orderListBody2'),
+      ];
+      const counts = [
+        document.getElementById('orderCount'),
+        document.getElementById('orderCount2'),
+      ];
+      const exportBtn = document.getElementById('exportBtn');
+
+      const html = orderList.length === 0
+        ? '<div class="order-empty">商品をスキャンして追加してください</div>'
+        : orderList.map((item, i) => {
+            const total = item.qtyA + item.qtyB;
+            const title = item.customTitle || buildTitle(item.product, item.qtyA, item.qtyB);
+            return `
+              <div class="order-item">
+                <div class="order-item-top">
+                  <div class="order-item-name">${escapeHtml(item.product.displayName)}</div>
+                  <div class="order-item-qty">A${item.qtyA}+B${item.qtyB}=${total}</div>
+                  <div class="order-item-actions">
+                    <button class="order-item-btn edit" onclick="toggleEdit(${i})" title="編集">✏️</button>
+                    <button class="order-item-btn remove" onclick="removeFromOrder(${i})" title="削除">✕</button>
+                  </div>
+                </div>
+                <div class="order-item-edit" id="edit-${i}">
+                  <input class="order-item-edit-input"
+                         value="${escapeAttr(title)}"
+                         oninput="updateTitle(${i}, this.value)"
+                         placeholder="To Doに出力されるテキスト">
+                  <div class="order-item-edit-hint">↑ To Doに出力されるテキストを自由に編集できます</div>
+                </div>
+              </div>`;
+          }).join('');
+
+      bodies.forEach(b => { if(b) b.innerHTML = html; });
+      counts.forEach(c => { if(c) c.textContent = orderList.length; });
+      exportBtn.textContent = `To Doに出力 (${orderList.length}件)`;
+      exportBtn.disabled = orderList.length === 0;
+    }
+
+    // ============================================================
+    // Search
+    // ============================================================
+    function doSearch() {
+      const category = document.getElementById('categoryFilter').value;
+      const query = document.getElementById('searchInput').value.trim().toLowerCase();
+      const resultsDiv = document.getElementById('searchResults');
+
+      if (!category && !query) {
+        resultsDiv.innerHTML = '<div class="order-empty">カテゴリーまたは商品名で検索してください</div>';
+        return;
+      }
+      let filtered = products;
+      if (category) filtered = filtered.filter(p => p.category === category);
+      if (query) filtered = filtered.filter(p => p.name.toLowerCase().includes(query));
+
+      if (filtered.length === 0) {
+        resultsDiv.innerHTML = '<div class="order-empty">該当する商品がありません</div>';
+        return;
+      }
+      const display = filtered.slice(0, 100);
+      resultsDiv.innerHTML = display.map((p) => {
+        const idx = products.indexOf(p);
+        return `
+          <div class="search-result-item" onclick="selectSearchProduct(${idx})">
+            <div class="search-result-name">${escapeHtml(p.displayName)}</div>
+            <div class="search-result-meta">${escapeHtml(p.category)} | ${p.barcode}</div>
+          </div>`;
+      }).join('') + (filtered.length > 100
+        ? `<div class="order-empty">他 ${filtered.length - 100}件...</div>` : '');
+    }
+
+    function selectSearchProduct(index) {
+      const product = products[index];
+      if (!product) return;
+      currentSearchProduct = product;
+      document.getElementById('searchProductName').textContent = product.displayName;
+      document.getElementById('searchProductCategory').textContent = `カテゴリー: ${product.category}`;
+      document.getElementById('searchProductBarcode').textContent = `バーコード: ${product.barcode}`;
+      document.getElementById('searchQtyA').value = '';
+      document.getElementById('searchQtyB').value = '';
+      document.getElementById('searchQtyTotal').textContent = '0';
+      const card = document.getElementById('searchProductCard');
+      card.classList.add('show');
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => document.getElementById('searchQtyA').focus(), 200);
+    }
+
+    // ============================================================
+    // Export to Microsoft To Do
+    // ============================================================
+    async function exportToTodo() {
+      if (orderList.length === 0) return;
+      if (!selectedTodoListId) {
+        showToast('設定タブでTo Doリストを選択してください', 'error');
+        return;
+      }
+      if (!deviceName) {
+        if (!confirm('デバイス名が未設定です。履歴に「未設定」と記録されます。\n続行しますか？（設定タブで変更できます）')) return;
+      }
+      const token = await getAccessToken();
+      if (!token) return;
+
+      const exportBtn = document.getElementById('exportBtn');
+      exportBtn.disabled = true;
+      exportBtn.innerHTML = '<span class="spinner"></span>出力中...';
+
+      let success = 0;
+      let fail = 0;
+      const exportedTitles = [];
+
+      for (const item of orderList) {
+        const title = item.customTitle || buildTitle(item.product, item.qtyA, item.qtyB);
+        try {
+          const res = await fetch(
+            `https://graph.microsoft.com/v1.0/me/todo/lists/${selectedTodoListId}/tasks`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ title }),
+            }
+          );
+          if (res.ok) {
+            success++;
+            exportedTitles.push(title);
+          } else {
+            fail++;
+            console.error('Task create failed:', await res.text());
+          }
+        } catch (err) {
+          fail++;
+          console.error('Task create error:', err);
+        }
+      }
+
+      if (fail === 0) {
+        showToast(`✅ ${success}件をTo Do「${selectedTodoListName}」に出力しました`, 'success');
+        // Save to history (async - syncs to GitHub)
+        await saveHistory(exportedTitles);
+        renderHistory();
+        orderList = [];
+        saveOrderList();
+        renderOrderList();
+      } else {
+        showToast(`${success}件成功, ${fail}件失敗`, 'error');
+      }
+      exportBtn.disabled = orderList.length === 0;
+      exportBtn.textContent = `To Doに出力 (${orderList.length}件)`;
+    }
+
+    // ============================================================
+    // Device Name
+    // ============================================================
+    function saveDeviceName() {
+      deviceName = document.getElementById('deviceNameInput').value.trim();
+      localStorage.setItem('deviceName', deviceName);
+      document.getElementById('deviceNameStatus').textContent =
+        deviceName ? `✅ 「${deviceName}」として記録されます` : '';
+    }
+
+    function initDeviceNameUI() {
+      if (deviceName) {
+        document.getElementById('deviceNameInput').value = deviceName;
+        document.getElementById('deviceNameStatus').textContent =
+          `✅ 「${deviceName}」として記録されます`;
+      }
+    }
+
+    function getDeviceIcon() {
+      const ua = navigator.userAgent;
+      if (/iPad/.test(ua)) return '📱';
+      if (/iPhone/.test(ua)) return '📱';
+      if (/Macintosh/.test(ua)) return '💻';
+      if (/Windows/.test(ua)) return '🖥️';
+      if (/Android/.test(ua)) return '📱';
+      return '🌐';
+    }
+
+    // ============================================================
+    // Export History (6 month retention, GitHub synced)
+    // ============================================================
+    let historyData = []; // in-memory cache
+
+    function getHistory() {
+      return historyData;
+    }
+
+    async function loadRemoteHistory() {
+      // 1. Try fetching from GitHub
+      try {
+        const res = await fetch('history.json?t=' + Date.now());
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            historyData = data;
+            // Purge old entries
+            const cutoff = Date.now() - HISTORY_RETENTION_MS;
+            historyData = historyData.filter(h => new Date(h.date).getTime() > cutoff);
+            return;
+          }
+        }
+      } catch (e) { /* not found */ }
+
+      // 2. Fallback: localStorage (migration from old format)
+      try {
+        const local = JSON.parse(localStorage.getItem('exportHistory') || '[]');
+        if (local.length > 0) {
+          historyData = local;
+          const cutoff = Date.now() - HISTORY_RETENTION_MS;
+          historyData = historyData.filter(h => new Date(h.date).getTime() > cutoff);
+        }
+      } catch(e) {}
+    }
+
+    async function saveHistory(titles) {
+      const entry = {
+        date: new Date().toISOString(),
+        listName: selectedTodoListName,
+        device: deviceName || '未設定',
+        deviceIcon: getDeviceIcon(),
+        tasks: titles,
+      };
+
+      historyData.unshift(entry);
+
+      // Purge old entries
+      const cutoff = Date.now() - HISTORY_RETENTION_MS;
+      historyData = historyData.filter(h => new Date(h.date).getTime() > cutoff);
+
+      // Save to localStorage as backup
+      localStorage.setItem('exportHistory', JSON.stringify(historyData));
+
+      // Sync to GitHub
+      if (githubToken) {
+        await syncHistoryToGithub();
+      }
+    }
+
+    async function syncHistoryToGithub() {
+      try {
+        const json = JSON.stringify(historyData, null, 2);
+        const content = btoa(unescape(encodeURIComponent(json)));
+
+        let sha = null;
+        try {
+          const getRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/history.json`, {
+            headers: { 'Authorization': `Bearer ${githubToken}` }
+          });
+          if (getRes.ok) {
+            const fileData = await getRes.json();
+            sha = fileData.sha;
+          }
+        } catch (e) {}
+
+        const body = { message: 'Update history.json', content };
+        if (sha) body.sha = sha;
+
+        await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/history.json`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${githubToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        });
+      } catch (err) {
+        console.error('History sync error:', err);
+      }
+    }
+
+    function renderHistory() {
+      const container = document.getElementById('historyListBody');
+      const history = getHistory();
+
+      if (history.length === 0) {
+        container.innerHTML = '<div class="history-empty">履歴はまだありません</div>';
+        return;
+      }
+
+      container.innerHTML = history.map(entry => {
+        const d = new Date(entry.date);
+        const dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        const deviceLabel = entry.device
+          ? `　${entry.deviceIcon || '🌐'} ${escapeHtml(entry.device)}`
+          : '';
+        const tasksHtml = entry.tasks.map(t =>
+          `<div class="history-task">・${escapeHtml(t)}</div>`
+        ).join('');
+        return `
+          <div class="history-item">
+            <div class="history-date">${dateStr}　(${entry.tasks.length}件)${deviceLabel}</div>
+            <div class="history-list-name">出力先: ${escapeHtml(entry.listName || '不明')}</div>
+            ${tasksHtml}
+          </div>`;
+      }).join('');
+    }
+
+    function clearHistory() {
+      if (!confirm('出力履歴をすべて削除しますか？')) return;
+      historyData = [];
+      localStorage.removeItem('exportHistory');
+      if (githubToken) syncHistoryToGithub();
+      renderHistory();
+      showToast('履歴を削除しました');
+    }
+
+    // ============================================================
+    // Utilities
+    // ============================================================
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+    function escapeAttr(str) {
+      return str.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function showToast(message, type = '') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast show ' + type;
+      setTimeout(() => { toast.className = 'toast'; }, 3000);
+    }
+  </script>
+</body>
+</html>
