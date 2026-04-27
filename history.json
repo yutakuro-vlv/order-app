@@ -1,5 +1,22 @@
 [
   {
+    "date": "2026-04-27T12:11:53.727Z",
+    "listName": "洋孝工房",
+    "device": "園子iPhone",
+    "deviceIcon": "📱",
+    "tasks": [
+      "うさぎプレーンtragus clicker earring silver925 16G LJ23085P -> A3+B3=6"
+    ],
+    "items": [
+      {
+        "barcode": "2000000003184",
+        "name": "うさぎプレーンtragus clicker earring silver925 16G LJ23085P",
+        "qtyA": 3,
+        "qtyB": 3
+      }
+    ]
+  },
+  {
     "date": "2026-04-27T11:52:21.762Z",
     "listName": "アンプ",
     "device": "園子iPhone",
