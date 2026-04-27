@@ -1,5 +1,22 @@
 [
   {
+    "date": "2026-04-27T15:38:22.008Z",
+    "listName": "洋孝工房",
+    "device": "園子iPhone",
+    "deviceIcon": "📱",
+    "tasks": [
+      "うさぎ earring hoop silver925 ダルメシアン LJ20050P いぶし -> A6+B0=6"
+    ],
+    "items": [
+      {
+        "barcode": "2000000004372",
+        "name": "うさぎ earring hoop silver925 ダルメシアン LJ20050P いぶし",
+        "qtyA": 6,
+        "qtyB": 0
+      }
+    ]
+  },
+  {
     "date": "2026-04-27T12:12:39.090Z",
     "listName": "洋孝工房",
     "device": "園子iPhone",
