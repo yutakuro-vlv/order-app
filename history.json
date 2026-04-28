@@ -1,5 +1,78 @@
 [
   {
+    "date": "2026-04-28T01:12:58.218Z",
+    "listName": "洋孝工房",
+    "device": "Yuta Mac",
+    "deviceIcon": "💻",
+    "tasks": [
+      "bone ring CROSS #01012 SILVER925 9.5号 -> A0+B1=1 刻印 BASE",
+      "bone ring CROSS #01012 SILVER925 14号 -> A0+B1=1 刻印 BASE",
+      "ribbone clicker hoop earring LJ23035P 18G -> A5+B0=5",
+      "うさぎダルメシアンclicker M 18G LJ25004P -> A5+B0=5",
+      "ribbone body earring straight プレーン/ サクラ サクラS 18G LJ23127P -> A5+B0=5",
+      "bone ribbone ring LJ23072R #3 -> A2+B0=2",
+      "うさぎ body earring straight プレーン16G LJ23030P -> A5+B0=5",
+      "うさぎ face tragus clicker SILVER925 18G / LJ23104P -> A6+B0=6",
+      "bone HEART body hook SILVER925 18G -> A10+B0=10"
+    ],
+    "items": [
+      {
+        "barcode": "2000000010434",
+        "name": "bone ring CROSS #01012 SILVER925 9.5号",
+        "qtyA": 0,
+        "qtyB": 1
+      },
+      {
+        "barcode": "2000000010519",
+        "name": "bone ring CROSS #01012 SILVER925 14号",
+        "qtyA": 0,
+        "qtyB": 1
+      },
+      {
+        "barcode": "2000000003160",
+        "name": "ribbone clicker hoop earring LJ23035P 18G",
+        "qtyA": 5,
+        "qtyB": 0
+      },
+      {
+        "barcode": "2000000003412",
+        "name": "うさぎダルメシアンclicker M 18G LJ25004P",
+        "qtyA": 5,
+        "qtyB": 0
+      },
+      {
+        "barcode": "2000000000831",
+        "name": "ribbone body earring straight プレーン/ サクラ サクラS 18G LJ23127P",
+        "qtyA": 5,
+        "qtyB": 0
+      },
+      {
+        "barcode": "2000000008691",
+        "name": "bone ribbone ring LJ23072R #3",
+        "qtyA": 2,
+        "qtyB": 0
+      },
+      {
+        "barcode": "2000000000879",
+        "name": "うさぎ body earring straight プレーン16G LJ23030P",
+        "qtyA": 5,
+        "qtyB": 0
+      },
+      {
+        "barcode": "2000000003306",
+        "name": "うさぎ face tragus clicker SILVER925 18G / LJ23104P",
+        "qtyA": 6,
+        "qtyB": 0
+      },
+      {
+        "barcode": "2000000003542",
+        "name": "bone HEART body hook SILVER925 18G",
+        "qtyA": 10,
+        "qtyB": 0
+      }
+    ]
+  },
+  {
     "date": "2026-04-27T15:38:22.008Z",
     "listName": "洋孝工房",
     "device": "園子iPhone",
