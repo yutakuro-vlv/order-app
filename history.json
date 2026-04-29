@@ -1,5 +1,22 @@
 [
   {
+    "date": "2026-04-29T20:30:00.708Z",
+    "listName": "洋孝工房",
+    "device": "園子iPhone",
+    "deviceIcon": "📱",
+    "tasks": [
+      "ribbone Tragus clicker earring SILVER925 18G・LJ23102P -> A10+B5=15"
+    ],
+    "items": [
+      {
+        "barcode": "2000000003290",
+        "name": "ribbone Tragus clicker earring SILVER925 18G・LJ23102P",
+        "qtyA": 10,
+        "qtyB": 5
+      }
+    ]
+  },
+  {
     "date": "2026-04-29T20:26:48.968Z",
     "listName": "洋孝工房",
     "device": "園子iPhone",
