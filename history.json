@@ -1,5 +1,22 @@
 [
   {
+    "date": "2026-04-29T20:20:38.335Z",
+    "listName": "洋孝工房",
+    "device": "園子iPhone",
+    "deviceIcon": "📱",
+    "tasks": [
+      "うさぎダルメシアンclicker M 18G LJ25004P -> A15+B0=15"
+    ],
+    "items": [
+      {
+        "barcode": "2000000003412",
+        "name": "うさぎダルメシアンclicker M 18G LJ25004P",
+        "qtyA": 15,
+        "qtyB": 0
+      }
+    ]
+  },
+  {
     "date": "2026-04-28T01:12:58.218Z",
     "listName": "洋孝工房",
     "device": "Yuta Mac",
