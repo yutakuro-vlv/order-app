@@ -1,5 +1,22 @@
 [
   {
+    "date": "2026-04-29T20:37:16.391Z",
+    "listName": "洋孝工房",
+    "device": "園子iPhone",
+    "deviceIcon": "📱",
+    "tasks": [
+      "bone ribbone ring LJ23072R #3 -> A3+B0=3"
+    ],
+    "items": [
+      {
+        "barcode": "2000000008691",
+        "name": "bone ribbone ring LJ23072R #3",
+        "qtyA": 3,
+        "qtyB": 0
+      }
+    ]
+  },
+  {
     "date": "2026-04-29T20:30:00.708Z",
     "listName": "洋孝工房",
     "device": "園子iPhone",
