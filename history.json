@@ -1,5 +1,36 @@
 [
   {
+    "date": "2026-04-29T20:39:59.206Z",
+    "listName": "洋孝工房",
+    "device": "園子iPhone",
+    "deviceIcon": "📱",
+    "tasks": [
+      "うさぎ ring (横) LJ23094R #11 SILVER925 -> A3+B0=3",
+      "うさぎ ring (横) LJ23094R #12 SILVER925 -> A2+B0=2",
+      "うさぎ ring (横) LJ23094R #17 SILVER925 -> A2+B0=2"
+    ],
+    "items": [
+      {
+        "barcode": "2000000008554",
+        "name": "うさぎ ring (横) LJ23094R #11 SILVER925",
+        "qtyA": 3,
+        "qtyB": 0
+      },
+      {
+        "barcode": "2000000008561",
+        "name": "うさぎ ring (横) LJ23094R #12 SILVER925",
+        "qtyA": 2,
+        "qtyB": 0
+      },
+      {
+        "barcode": "2000000008622",
+        "name": "うさぎ ring (横) LJ23094R #17 SILVER925",
+        "qtyA": 2,
+        "qtyB": 0
+      }
+    ]
+  },
+  {
     "date": "2026-04-29T20:37:16.391Z",
     "listName": "洋孝工房",
     "device": "園子iPhone",
