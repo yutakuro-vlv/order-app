@@ -1,5 +1,22 @@
 [
   {
+    "date": "2026-05-07T05:58:16.464Z",
+    "listName": "洋孝工房",
+    "device": "Yuta Mac",
+    "deviceIcon": "💻",
+    "tasks": [
+      "うさぎ body earring straight プレーン L 16G LJ24111P -> A0+B1=1 7mmに変更 松橋 佳那"
+    ],
+    "items": [
+      {
+        "barcode": "2000000000909",
+        "name": "うさぎ body earring straight プレーン L 16G LJ24111P",
+        "qtyA": 0,
+        "qtyB": 1
+      }
+    ]
+  },
+  {
     "date": "2026-05-07T05:49:50.249Z",
     "listName": "洋孝工房",
     "device": "Yuta Mac",
